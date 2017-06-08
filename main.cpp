@@ -99,6 +99,7 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
 GLUI_Panel      *obj_panel;
 GLUI_StaticText *fps_val;
+GLUI_Spinner *spinner;
 
 int checkForOpenGLError(const char* file, int line)
 {
@@ -168,13 +169,17 @@ void init()
 
   // pngTex = new GLuint[maxTexturesNumber];
 
-  // loadImage(datasetDir, pngTex, &png_width, &png_height, maxTexturesNumber);
-  initVol3DTex("../10242.raw", &pngTex, 1024, 1024, 1008);
+  // texture.loadImage(datasetDir, pngTex, &png_width, &png_height, maxTexturesNumber);
+  // texture.initVol3DTex("../256.tif", &pngTex, 256, 256, 252);
+  Texture texture;
+  texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
 
-  // loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height, 1); // cm_Greys_r
-  initTFF1DTex("../tff.dat", &trTex);
+  // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
 
-  // loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height);
+  // texture.loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height, 1); // cm_Greys_r
+  texture.initTFF1DTex("../tff.dat", &trTex);
+
+  // texture.loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height);
 
   g_bfTexObj = initFace2DTex(g_texWidth, g_texHeight);
   GL_ERROR();
@@ -303,6 +308,7 @@ void rcSetUinforms()
   //   	glUniform1i(transferFuncLoc, 0);
   // }
   // else cout << "uBackCoord is not bind to the uniform\n";
+
   GLint transferFuncLoc = glGetUniformLocation(g_programHandle, "uTransferFunction");
   if (transferFuncLoc >= 0)
   {
@@ -439,7 +445,7 @@ float angleY=0;
 void render(GLenum cullFace)
 {
     GL_ERROR();
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //  transform the box
     glm::mat4 projection = glm::perspective(FoV, (GLfloat)g_winWidth/g_winHeight, 0.1f, 400.f);
@@ -611,8 +617,9 @@ int main(int argc, char** argv)
   separator = new GLUI_Separator(obj_panel);
 
   // GLUI_StaticText *step_size_label = new GLUI_StaticText(obj_panel, "StepSize:");
-  GLUI_Spinner *spinner = new GLUI_Spinner(obj_panel, "StepSize:", &g_stepSize);
-  spinner->set_float_limits(0, 256.0);
+  // GLUI_Spinner *spinner = new GLUI_Spinner(obj_panel, "StepSize:", &g_stepSize);
+  spinner = new GLUI_Spinner(obj_panel, "StepSize:", &g_stepSize);
+  spinner->set_float_limits(0, 1024.0);
   spinner->set_alignment(GLUI_ALIGN_RIGHT);
   sb = new GLUI_Scrollbar(obj_panel, "StepSize", GLUI_SCROLL_HORIZONTAL, &g_stepSize);
   sb->set_float_limits(0, 1024.0);
