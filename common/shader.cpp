@@ -2,11 +2,33 @@
 #include <iostream>
 #include <GL/glew.h>
 #include <include/GL/gl.h>
+#include "shader.hpp"
 
 using namespace std;
 
+void Shader::setUniform(const GLchar* var, float val) {
+  GLint location = glGetUniformLocation(g_programHandle, var);
+  if (location >= 0) glUniform1f(location, val);
+  else cout << var << " is not bind to the uniform\n";
+}
+
+void Shader::setUniform(const GLchar *var, GLenum target, GLuint texture, GLint v0) {
+  GLint location = glGetUniformLocation(g_programHandle, var);
+  if (location >= 0)
+  {
+    	glActiveTexture(GL_TEXTURE0 + v0);
+    	glBindTexture(target, texture);
+    	glUniform1i(location, v0);
+  }
+  else cout << var << " is not bind to the uniform\n";
+}
+
+GLuint Shader::get_programHandle() {
+  return g_programHandle;
+}
+
 // check the compilation result
-GLboolean compileCheck(GLuint shader)
+GLboolean Shader::compileCheck(GLuint shader)
 {
     GLint err;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &err);
@@ -27,7 +49,7 @@ GLboolean compileCheck(GLuint shader)
 }
 
 // init shader object
-GLuint initShaderObj(const GLchar* srcfile, GLenum shaderType)
+GLuint Shader::initShaderObj(const GLchar* srcfile, GLenum shaderType)
 {
     ifstream inFile(srcfile, ifstream::in);
     // use assert?
@@ -37,7 +59,7 @@ GLuint initShaderObj(const GLchar* srcfile, GLenum shaderType)
     	exit(EXIT_FAILURE);
     }
 
-    const int MAX_CNT = 10000;
+    const int MAX_CNT = 20000;
     GLchar *shaderCode = (GLchar *) calloc(MAX_CNT, sizeof(GLchar));
     inFile.read(shaderCode, MAX_CNT);
     if (inFile.eof())
@@ -61,19 +83,18 @@ GLuint initShaderObj(const GLchar* srcfile, GLenum shaderType)
 }
 
 // link shader program
-GLuint createShaderPgm()
+void Shader::createShaderPgm()
 {
     // Create the shader program
-    GLuint programHandle = glCreateProgram();
-    if (0 == programHandle)
+    g_programHandle = glCreateProgram();
+    if (0 == g_programHandle)
     {
     	cerr << "Error create shader program" << endl;
     	exit(EXIT_FAILURE);
     }
-    return programHandle;
 }
 
-GLint checkShaderLinkStatus(GLuint pgmHandle)
+GLint Shader::checkShaderLinkStatus(GLuint pgmHandle)
 {
     GLint status;
     glGetProgramiv(pgmHandle, GL_LINK_STATUS, &status);
@@ -93,7 +114,7 @@ GLint checkShaderLinkStatus(GLuint pgmHandle)
 }
 
 // link the shader objects using the shader program
-void linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHandle)
+void Shader::linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHandle)
 {
     const GLsizei maxCount = 2;
     GLsizei count;

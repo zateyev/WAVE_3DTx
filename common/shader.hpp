@@ -1,10 +1,21 @@
 #ifndef SHADER_HPP
 #define SHADER_HPP
 
-GLboolean compileCheck(GLuint shader);
-GLuint initShaderObj(const GLchar* srcfile, GLenum shaderType);
-GLuint createShaderPgm();
-void linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHandle);
-GLint checkShaderLinkStatus(GLuint pgmHandle);
+class Shader {
+  private:
+    GLuint g_programHandle;
+
+    static GLboolean compileCheck(GLuint shader);
+    static GLint checkShaderLinkStatus(GLuint pgmHandle);
+
+  public:
+    GLuint get_programHandle();
+
+    void setUniform(const GLchar* var, float val);
+    void setUniform(const GLchar *var, GLenum target, GLuint texture, GLint v0);
+    static GLuint initShaderObj(const GLchar* srcfile, GLenum shaderType);
+    void createShaderPgm();
+    static void linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHandle);
+};
 
 #endif

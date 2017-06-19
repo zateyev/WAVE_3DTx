@@ -1,4 +1,3 @@
-#include <fstream>
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -25,7 +24,7 @@ using glm::mat4;
 using glm::vec3;
 
 GLuint g_vao;
-GLuint g_programHandle;
+Shader shader;
 GLuint g_winWidth = 900;
 GLuint g_winHeight = 800;
 GLint g_angle = 0;
@@ -170,9 +169,9 @@ void init()
   // pngTex = new GLuint[maxTexturesNumber];
 
   // texture.loadImage(datasetDir, pngTex, &png_width, &png_height, maxTexturesNumber);
-  // texture.initVol3DTex("../256.tif", &pngTex, 256, 256, 252);
   Texture texture;
   texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
+  // texture.initVol3DTex("../256.raw", &pngTex, 256, 256, 252);
 
   // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
 
@@ -295,46 +294,16 @@ void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
 
 void rcSetUinforms()
 {
-  GLint stepSizeLoc = glGetUniformLocation(g_programHandle, "uSteps");
-  GL_ERROR();
-  if (stepSizeLoc >= 0) glUniform1f(stepSizeLoc, g_stepSize);
-  else cout << "uSteps is not bind to the uniform\n";
-  GL_ERROR();
-  // GLint transferFuncLoc = glGetUniformLocation(g_programHandle, "uTransferFunction");
-  // if (transferFuncLoc >= 0)
-  // {
-  //   	glActiveTexture(GL_TEXTURE0);
-  //   	glBindTexture(GL_TEXTURE_2D, trTex);
-  //   	glUniform1i(transferFuncLoc, 0);
-  // }
-  // else cout << "uBackCoord is not bind to the uniform\n";
-
-  GLint transferFuncLoc = glGetUniformLocation(g_programHandle, "uTransferFunction");
-  if (transferFuncLoc >= 0)
-  {
-    	glActiveTexture(GL_TEXTURE0);
-    	glBindTexture(GL_TEXTURE_1D, trTex);
-    	glUniform1i(transferFuncLoc, 0);
-  }
-  else cout << "uBackCoord is not bind to the uniform\n";
-
-  GL_ERROR();
-  GLint backFaceLoc = glGetUniformLocation(g_programHandle, "uBackCoord");
-  if (backFaceLoc >= 0)
-  {
-    	glActiveTexture(GL_TEXTURE1);
-    	glBindTexture(GL_TEXTURE_2D, g_bfTexObj);
-    	glUniform1i(backFaceLoc, 1);
-  }
-  else cout << "uBackCoord is not bind to the uniform\n";
-  GL_ERROR();
+  shader.setUniform("uSteps", g_stepSize);
+  shader.setUniform("uTransferFunction", GL_TEXTURE_1D, trTex, 0);
+  shader.setUniform("uBackCoord", GL_TEXTURE_2D, g_bfTexObj, 1);
 
   // string sprites;
   // GLint volumeLoc;
   // for (int i = 0; i < maxTexturesNumber; i++)
   // {
   //   sprites = "uSliceMaps[" + to_string(i) + "]";
-  //   volumeLoc = glGetUniformLocation(g_programHandle, sprites.c_str());
+  //   volumeLoc = glGetUniformLocation(shader.get_programHandle(), sprites.c_str());
   //   if (volumeLoc >= 0)
   //   {
   //   	glActiveTexture(GL_TEXTURE2 + i); // GL_TEXTURE2
@@ -344,66 +313,33 @@ void rcSetUinforms()
   //   else cout << "uSliceMaps is not bind to the uniform\n";
   // }
 
-  GLint volumeLoc = glGetUniformLocation(g_programHandle, "uSliceMaps");
-    if (volumeLoc >= 0)
-    {
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_3D, pngTex);
-	glUniform1i(volumeLoc, 2);
-    }
-    else
-    {
-	cout << "uSliceMaps "
-	     << "is not bind to the uniform"
-	     << endl;
-    }
+  shader.setUniform("uSliceMaps", GL_TEXTURE_3D, pngTex, 2);
+  shader.setUniform("uMinGrayVal", g_MinGrayVal);
+  shader.setUniform("uMaxGrayVal", g_MaxGrayVal);
+  shader.setUniform("uOpacityVal", g_OpacityVal);
 
-  // GLint uNumberOfSlicesLoc = glGetUniformLocation(g_programHandle, "uNumberOfSlices");
-  // if (uNumberOfSlicesLoc >= 0) glUniform1f(uNumberOfSlicesLoc, g_NumberOfSlices);
-  // else cout << "uNumberOfSlices is not bind to the uniform\n";
+  // shader.setUniform("uNumberOfSlices", g_NumberOfSlices);
+  // shader.setUniform("uColorVal", g_ColorVal);
+  // shader.setUniform("uAbsorptionModeIndex", g_AbsorptionModeIndex);
+  // shader.setUniform("uSlicesOverX", g_SlicesOverX);
+  // shader.setUniform("uSlicesOverY", g_SlicesOverY);
 
-  GLint uMinGrayValLoc = glGetUniformLocation(g_programHandle, "uMinGrayVal");
-  if (uMinGrayValLoc >= 0) glUniform1f(uMinGrayValLoc, g_MinGrayVal);
-  else cout << "uMinGrayVal is not bind to the uniform\n";
-
-  GLint uMaxGrayValLoc = glGetUniformLocation(g_programHandle, "uMaxGrayVal");
-  if (uMaxGrayValLoc >= 0) glUniform1f(uMaxGrayValLoc, g_MaxGrayVal);
-  else cout << "uMaxGrayVal is not bind to the uniform\n";
-
-  GLint uOpacityValLoc = glGetUniformLocation(g_programHandle, "uOpacityVal");
-  if (uOpacityValLoc >= 0) glUniform1f(uOpacityValLoc, g_OpacityVal);
-  else cout << "uOpacityVal is not bind to the uniform\n";
-
-  // GLint uColorValLoc = glGetUniformLocation(g_programHandle, "uColorVal");
-  // if (uColorValLoc >= 0) glUniform1f(uColorValLoc, g_ColorVal);
-  // else cout << "uColorVal is not bind to the uniform\n";
-  //
-  // GLint uAbsorptionModeIndexLoc = glGetUniformLocation(g_programHandle, "uAbsorptionModeIndex");
-  // if (uAbsorptionModeIndexLoc >= 0) glUniform1f(uAbsorptionModeIndexLoc, g_AbsorptionModeIndex);
-  // else cout << "uAbsorptionModeIndex is not bind to the uniform\n";
-  //
-  // GLint uSlicesOverXLoc = glGetUniformLocation(g_programHandle, "uSlicesOverX");
-  // if (uSlicesOverXLoc >= 0) glUniform1f(uSlicesOverXLoc, g_SlicesOverX);
-  // else cout << "uSlicesOverX is not bind to the uniform\n";
-  //
-  // GLint uSlicesOverYLoc = glGetUniformLocation(g_programHandle, "uSlicesOverY");
-  // if (uSlicesOverYLoc >= 0) glUniform1f(uSlicesOverYLoc, g_SlicesOverY);
-  // else cout << "uSlicesOverY is not bind to the uniform\n";
+  GL_ERROR();
 }
 
 // init the shader object and shader program
 void initShader()
 {
 // vertex shader object for first pass
-    g_bfVertHandle = initShaderObj("../shader/firstPass.vert", GL_VERTEX_SHADER);
+    g_bfVertHandle = Shader::initShaderObj("../shader/firstPass.vert", GL_VERTEX_SHADER);
 // fragment shader object for first pass
-    g_bfFragHandle = initShaderObj("../shader/firstPass.frag", GL_FRAGMENT_SHADER);
+    g_bfFragHandle = Shader::initShaderObj("../shader/firstPass.frag", GL_FRAGMENT_SHADER);
 // vertex shader object for second pass
-    g_rcVertHandle = initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
+    g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
 // fragment shader object for second pass
-    g_rcFragHandle = initShaderObj("../shader/raycasting.frag", GL_FRAGMENT_SHADER);
+    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
 // create the shader program , use it in an appropriate time
-    g_programHandle = createShaderPgm();
+    shader.createShaderPgm();
 }
 
 void display()
@@ -416,8 +352,8 @@ void display()
     // render to texture
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_frameBuffer);
     glViewport(0, 0, g_winWidth, g_winHeight);
-    linkShader(g_programHandle, g_bfVertHandle, g_bfFragHandle);
-    glUseProgram(g_programHandle);
+    Shader::linkShader(shader.get_programHandle(), g_bfVertHandle, g_bfFragHandle);
+    glUseProgram(shader.get_programHandle());
     // cull front face
     render(GL_FRONT);
     glUseProgram(0);
@@ -427,9 +363,9 @@ void display()
     tx = (g_winWidth - tw) / 2;
     glViewport(-tx, 0, g_winWidth, g_winHeight);
 
-    linkShader(g_programHandle, g_rcVertHandle, g_rcFragHandle);
+    Shader::linkShader(shader.get_programHandle(), g_rcVertHandle, g_rcFragHandle);
     GL_ERROR();
-    glUseProgram(g_programHandle);
+    glUseProgram(shader.get_programHandle());
     rcSetUinforms();
     GL_ERROR();
     render(GL_BACK);
@@ -467,7 +403,7 @@ void render(GLenum cullFace)
     model *= glm::translate(glm::vec3(-0.5f, -0.5f, -0.5f));
     // notice the multiplication order: reverse order of transform
     glm::mat4 mvp = projection * view * model;
-    GLuint mvpIdx = glGetUniformLocation(g_programHandle, "MVP");
+    GLuint mvpIdx = glGetUniformLocation(shader.get_programHandle(), "MVP");
     if (mvpIdx >= 0)
     {
     	glUniformMatrix4fv(mvpIdx, 1, GL_FALSE, &mvp[0][0]);
