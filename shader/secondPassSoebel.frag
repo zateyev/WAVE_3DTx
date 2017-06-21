@@ -2,14 +2,9 @@ precision mediump int;
 precision mediump float;
 varying vec4 frontColor;
 varying vec4 pos;
-varying vec3 worldPosition;
 uniform sampler2D uBackCoord;
 uniform sampler3D uSliceMaps;
-uniform float uNumberOfSlices;
 uniform float uOpacityVal;
-uniform float uSlicesOverX;
-uniform float uSlicesOverY;
-uniform float darkness;
 uniform vec3 uLightPos;
 uniform int uSetViewMode;
 uniform float uMinGrayVal;
@@ -17,8 +12,6 @@ uniform float uMaxGrayVal;
 uniform float uSteps;
 uniform float l;
 uniform float s;
-uniform float hMin;
-uniform float hMax;
 
 // Compute the Normal around the current voxel
 vec3 getNormal(vec3 at)
@@ -242,20 +235,22 @@ vec3 getNormal(vec3 at)
     return n;
 }
 // returns intensity of reflected ambient lighting
+const vec3 lightColor = vec3(0.0, 1.0, 0.0);
+const vec3 u_intensity = vec3(0.1, 0.1, 0.1);
 vec3 ambientLighting()
 {
-    const vec3 u_matAmbientReflectance = vec3(1.0, 1.0, 1.0);
+    const vec3 u_matAmbientReflectance = lightColor;
     // const vec3 u_lightAmbientIntensity = vec3(0.6, 0.3, 0.0);
-    const vec3 u_lightAmbientIntensity = vec3(0.5, 0.5, 0.5);
+    const vec3 u_lightAmbientIntensity = u_intensity;
 
     return u_matAmbientReflectance * u_lightAmbientIntensity;
 }
 // returns intensity of diffuse reflection
 vec3 diffuseLighting(in vec3 N, in vec3 L)
 {
-    const vec3 u_matDiffuseReflectance = vec3(1, 1, 1);
+    const vec3 u_matDiffuseReflectance = lightColor;
     // const vec3 u_lightDiffuseIntensity = vec3(1.0, 0.5, 0);
-    const vec3 u_lightDiffuseIntensity = vec3(0.5, 0.5, 0.5);
+    const vec3 u_lightDiffuseIntensity = vec3(0.6, 0.6, 0.6);
 
     // calculation as for Lambertian reflection
     float diffuseTerm = dot(N, L);
@@ -271,19 +266,66 @@ vec3 specularLighting(in vec3 N, in vec3 L, in vec3 V)
 {
     float specularTerm = 0.0;
     // const vec3 u_lightSpecularIntensity = vec3(0, 1, 0);
-    const vec3 u_lightSpecularIntensity = vec3(0.5, 0.5, 0.5);
-    const vec3 u_matSpecularReflectance = vec3(1, 1, 1);
+    const vec3 u_lightSpecularIntensity = u_intensity;
+    const vec3 u_matSpecularReflectance = lightColor;
     const float u_matShininess = 5.0;
    // calculate specular reflection only if
    // the surface is oriented to the light source
    if(dot(N, L) > 0.0)
    {
       // half vector
-      vec3 H = normalize(L + V);
-      specularTerm = pow(dot(N, H), u_matShininess);
+      // vec3 H = normalize(L + V);
+      // specularTerm = pow(dot(N, H), u_matShininess);
+
+      vec3 e = normalize(-V);
+      vec3 r = normalize(-reflect(L, N));
+      specularTerm = pow(max(dot(r, e), 0.0), u_matShininess);
    }
    return u_matSpecularReflectance * u_lightSpecularIntensity * specularTerm;
 }
+
+
+float beckmannDistribution(float x, float roughness) {
+  float NdotH = max(x, 0.0001);
+  float cos2Alpha = NdotH * NdotH;
+  float tan2Alpha = (cos2Alpha - 1.0) / cos2Alpha;
+  float roughness2 = roughness * roughness;
+  float denom = 3.141592653589793 * roughness2 * cos2Alpha * cos2Alpha;
+  return exp(tan2Alpha / roughness2) / denom;
+}
+
+vec3 cookTorranceSpecular(
+  vec3 surfaceNormal,
+  vec3 lightDirection,
+  vec3 viewDirection,
+  float roughness,
+  float fresnel,
+  float k) {
+
+  float VdotN = max(dot(viewDirection, surfaceNormal), 0.0);
+  float LdotN = max(dot(lightDirection, surfaceNormal), 0.0);
+
+  //Half angle vector
+  vec3 H = normalize(lightDirection + viewDirection);
+
+  //Geometric term
+  float NdotH = max(dot(surfaceNormal, H), 0.0);
+  float VdotH = max(dot(viewDirection, H), 0.000001);
+  float x = 2.0 * NdotH / VdotH;
+  float G = min(1.0, min(x * VdotN, x * LdotN));
+
+  //Distribution term
+  float D = beckmannDistribution(NdotH, roughness);
+
+  //Fresnel term
+  float F = pow(1.0 - VdotN, fresnel);
+
+  //Multiply terms
+  float power =  G * F * D / max(3.14159265 * VdotN * LdotN, 0.000001);
+
+  return lightColor * LdotN * (k + power * (1.0 - k));
+}
+
 void main(void)
 {
     vec2 texC = ((pos.xy/pos.w) + 1.0) / 2.0;
@@ -292,9 +334,13 @@ void main(void)
     vec4 vpos = frontColor;
     vec3 Step = dir/uSteps;
     vec4 accum = vec4(0, 0, 0, 0);
-    vec4 sample = vec4(0.0, 0.0, 0.0, 0.0);
+    vec4 sample = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 colorValue = vec4(0, 0, 0, 0);
-    vec3 lightPos = vec3(1, 1, 1);
+    vec3 lightPos[3];
+    lightPos[0] = vec3(1, 1, 1);
+    lightPos[1] = vec3(-1, -1, -1);
+    // lightPos[2] = vec3(-1, -1, 1);
+    lightPos[2] = vec3(1, 1, -1);
 
     for(int i = 0; i < uSteps; i++) {
         float gray_val = texture(uSliceMaps, vpos.xyz);
@@ -305,38 +351,32 @@ void main(void)
             colorValue.x = (-1.0 * 2.0 - gray_val) * l * 0.4;
             //colorValue.x = gray_val;
             colorValue.w = 0.1;
-            if ( 1 == 1 ) {
-                // normalize vectors after interpolation
-                vec3 L = normalize(vpos.xyz - lightPos);
-                vec3 V = normalize( pos - vpos.xyz );
-                vec3 N = normalize(getNormal(vpos.xyz));
-                // get Blinn-Phong reflectance components
-                vec3 Iamb = ambientLighting();
-                vec3 Idif = diffuseLighting(N, L);
-                vec3 Ispe = specularLighting(N, L, V);
+            // normalize vectors after interpolation
+            vec3 V = normalize(pos - vpos.xyz);
+            vec3 N = normalize(getNormal(vpos.xyz));
 
-                // vec3 Iamb = gl_FrontLightProduct[0].ambient;
-                // vec3 Idif = gl_FrontLightProduct[0].diffuse * max(dot(N, L), 0.0);
-                // Idif = clamp(Idif, 0.0, 1.0);
-                // vec3 e = normalize(-V);
-                // vec3 r = normalize(-reflect(L, N));
-                // vec3 Ispe = gl_FrontLightProduct[0].specular * pow(max(dot(r, e), 0.0), gl_FrontMaterial.shininess);
-                // Ispe = clamp(Ispe, 0.0, 1.0);
+            // set important material values for cookTorranceSpecular
+            float roughnessValue = 0.6; // 0 : smooth, 1: rough
+            float F0 = 5.0; // fresnel reflectance at normal incidence
+            float k = 0.7; // fraction of diffuse reflection (specular reflection = 1 - k)
 
-                // diffuse color of the object from texture
-                //vec3 diffuseColor = texture(u_diffuseTexture, o_texcoords).rgb;
+            for(int i = 0; i < 3; ++i) {
+              vec3 L = normalize(lightPos[i] - vpos.xyz);
+              if (uSetViewMode == 0) { // Blinn-Phong shading mode
+                  vec3 Iamb = ambientLighting();
+                  vec3 Idif = diffuseLighting(N, L);
+                  vec3 Ispe = specularLighting(N, L, V);
 
-                vec3 mycolor = (Iamb + Idif + Ispe);
-                //vec3 mycolor = colorValue.xxx * (Iamb + Ispe);
-                sample.rgb = mycolor;
-                sample.a = 1.0;
-            } else {
-                sample.rgb = (1.0 - accum.a) * colorValue.xxx * sample.a;
-                sample.a = colorValue.a * uOpacityVal * (1.0 / uSteps);
+                  sample.rgb += (Iamb + Idif + Ispe);
+              }
+              else if(uSetViewMode == 1) { // Cook-Torrance mode
+                sample.rgb += cookTorranceSpecular(N, L, V, roughnessValue, F0, k);
+              }
             }
+
             accum += sample;
-            if(accum.a>=1.0)
-               break;
+            if(accum.a >= 1.0)
+              break;
         }
 
         //advance the current position

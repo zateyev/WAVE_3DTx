@@ -48,6 +48,7 @@ int maxTexturesNumber = 8;
 float g_SlicesOverX = 8.0;
 float g_SlicesOverY = g_SlicesOverX;
 string datasetDir = "../sprites/";
+int uSetViewMode = 0;
 
 // float g_NumberOfSlices = 1024.0;
 // int png_width = 16384;
@@ -317,6 +318,7 @@ void rcSetUinforms()
   shader.setUniform("uMinGrayVal", g_MinGrayVal);
   shader.setUniform("uMaxGrayVal", g_MaxGrayVal);
   shader.setUniform("uOpacityVal", g_OpacityVal);
+  shader.setUniform("uSetViewMode", uSetViewMode);
 
   // shader.setUniform("uNumberOfSlices", g_NumberOfSlices);
   // shader.setUniform("uColorVal", g_ColorVal);
@@ -559,6 +561,12 @@ int main(int argc, char** argv)
   spinner->set_alignment(GLUI_ALIGN_RIGHT);
   sb = new GLUI_Scrollbar(obj_panel, "StepSize", GLUI_SCROLL_HORIZONTAL, &g_stepSize);
   sb->set_float_limits(0, 1024.0);
+
+  /**** Add listbox ****/
+  new GLUI_StaticText( glui, "" );
+  GLUI_Listbox *list = new GLUI_Listbox( glui, "View mode:", &uSetViewMode );
+  list->add_item(0, "Blinn-Phong shading");
+  list->add_item(1, "Cook-Torrance");
 
   init();
 

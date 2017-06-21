@@ -12,6 +12,12 @@ void Shader::setUniform(const GLchar* var, float val) {
   else cout << var << " is not bind to the uniform\n";
 }
 
+void Shader::setUniform(const GLchar* var, int val) {
+  GLint location = glGetUniformLocation(g_programHandle, var);
+  if (location >= 0) glUniform1i(location, val);
+  else cout << var << " is not bind to the uniform\n";
+}
+
 void Shader::setUniform(const GLchar *var, GLenum target, GLuint texture, GLint v0) {
   GLint location = glGetUniformLocation(g_programHandle, var);
   if (location >= 0)
