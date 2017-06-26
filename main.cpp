@@ -25,8 +25,8 @@ using glm::vec3;
 
 GLuint g_vao;
 Shader shader;
-GLuint g_winWidth = 900;
-GLuint g_winHeight = 800;
+GLuint g_winWidth = 1920;//900;
+GLuint g_winHeight = 1135;//800;
 GLint g_angle = 0;
 GLuint g_frameBuffer;
 // transfer function
@@ -74,8 +74,8 @@ int uSetViewMode = 0;
 // float g_SlicesOverY = g_SlicesOverX;
 // string datasetDir = "../slicemaps/";
 
-float g_stepSize = 200.0;
-float g_MinGrayVal = 0.278; // 0
+float g_stepSize = 512.0;
+float g_MinGrayVal = 0.0; // 0
 float g_MaxGrayVal = 1.0; // 1
 float g_OpacityVal = 1.0; // 40
 float g_ColorVal = 1.0; // 0.4
@@ -90,6 +90,9 @@ int   last_x, last_y;
 float rotationX = 0.0, rotationY = 0.0;
 float initialFoV = 45.0f;
 float FoV = 45.0f;
+
+int xx = 0; int yy = 0;
+int ww = 0; int hh = 0;
 
 int main_window;
 
@@ -171,7 +174,8 @@ void init()
 
   // texture.loadImage(datasetDir, pngTex, &png_width, &png_height, maxTexturesNumber);
   Texture texture;
-  texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
+  // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
+  texture.initVol3DTex("../breast2.raw", &pngTex, 256, 256, 256);
   // texture.initVol3DTex("../256.raw", &pngTex, 256, 256, 252);
 
   // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
@@ -339,10 +343,13 @@ void initShader()
 // vertex shader object for second pass
     g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
 // fragment shader object for second pass
-    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
+    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
+    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
 // create the shader program , use it in an appropriate time
     shader.createShaderPgm();
 }
+
+void reshape(int w, int h);
 
 void display()
 {
@@ -361,10 +368,9 @@ void display()
     glUseProgram(0);
     GL_ERROR();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
     tx = (g_winWidth - tw) / 2;
-    glViewport(-tx, 0, g_winWidth, g_winHeight);
-
+    ty = (g_winHeight - th) / 2;
+    glViewport(-tx, -ty, g_winWidth, g_winHeight);
     Shader::linkShader(shader.get_programHandle(), g_rcVertHandle, g_rcFragHandle);
     GL_ERROR();
     glUseProgram(shader.get_programHandle());
@@ -387,16 +393,13 @@ void render(GLenum cullFace)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //  transform the box
     glm::mat4 projection = glm::perspective(FoV, (GLfloat)g_winWidth/g_winHeight, 0.1f, 400.f);
-    // glm::mat4 view = glm::lookAt(glm::vec3(1.0f, 1.0f, 2.0f),
-    // 				 glm::vec3(0.0f, 0.0f, 0.0f),
-    // 				 glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
     				 glm::vec3(0.0f, 0.0f, 0.0f),
     				 glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 model = mat4(1.0f);
-    //model *= glm::rotate((float)g_angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    model *= glm::rotate((float)g_angle, glm::vec3(0.0f, 1.0f, 0.0f));
     // to make the "head256.raw" i.e. the volume data stand up.
     //model *= glm::rotate(180.0f, vec3(1.0f, 0.0f, 0.0f));
     model *= glm::rotate(angleX, vec3(0.0f, 1.0f, 0.0f));
@@ -459,12 +462,22 @@ void rotateDisplay()
     g_angle = (g_angle + 1) % 360;
     glutPostRedisplay();
 }
+
+void updateCamera()
+{
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(xx, xx + ww, yy, yy + hh, -1, 1);
+  glScalef(1, -1, 1);
+  glTranslatef(0, -hh, 0);
+}
+
 void reshape(int w, int h)
 {
-    g_winWidth = w;
-    g_winHeight = h;
-    g_texWidth = w;
-    g_texHeight = h;
+    ww = w;
+    hh = h;
+    glViewport(0, 0, w, h);
+    updateCamera();
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -500,13 +513,13 @@ int main(int argc, char** argv)
   	fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
   }
 
-  glutDisplayFunc(&display);
+  GLUI_Master.set_glutDisplayFunc(&display);
   glutTimerFunc(10, timerCB, 10);
-  glutReshapeFunc(&reshape);
+  GLUI_Master.set_glutReshapeFunc(&reshape);
   glutKeyboardFunc(&keyboard);
   glutMotionFunc(&myGlutMotion);
-  glutMouseFunc(&myGlutMouse);
-  //glutIdleFunc(&rotateDisplay);
+  GLUI_Master.set_glutMouseFunc(&myGlutMouse);
+  GLUI_Master.set_glutIdleFunc(&rotateDisplay);
   // init();
 
   /****************************************/

@@ -133,7 +133,7 @@ void Shader::linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHa
     }
     // Bind index 0 to the shader input variable "VerPos"
     glBindAttribLocation(shaderPgm, 0, "position");
-    // Bind index 1 to the shader input variable "VerClr"
+    // Bind index 1 to the shader input variable "vertColor"
     glBindAttribLocation(shaderPgm, 1, "vertColor");
     // GL_ERROR();
     glAttachShader(shaderPgm,newVertHandle);
