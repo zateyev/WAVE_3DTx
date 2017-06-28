@@ -75,7 +75,7 @@ int uSetViewMode = 0;
 // string datasetDir = "../slicemaps/";
 
 float g_stepSize = 512.0;
-float g_MinGrayVal = 0.0; // 0
+float g_MinGrayVal = 108.0 / 256.0; // 0
 float g_MaxGrayVal = 1.0; // 1
 float g_OpacityVal = 1.0; // 40
 float g_ColorVal = 1.0; // 0.4
@@ -102,6 +102,7 @@ GLUI_Spinner    *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
 GLUI_Panel      *obj_panel;
 GLUI_StaticText *fps_val;
+GLUI_StaticText *min_gr_label;
 GLUI_Spinner *spinner;
 
 int checkForOpenGLError(const char* file, int line)
@@ -175,10 +176,9 @@ void init()
   // texture.loadImage(datasetDir, pngTex, &png_width, &png_height, maxTexturesNumber);
   Texture texture;
   // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
-  texture.initVol3DTex("../breast2.raw", &pngTex, 256, 256, 256);
+  // texture.initVol3DTex("../breast2.raw", &pngTex, 256, 256, 256);
+  texture.initVol3DTex("../wasp.raw", &pngTex, 256, 256, 449);
   // texture.initVol3DTex("../256.raw", &pngTex, 256, 256, 252);
-
-  // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
 
   // texture.loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height, 1); // cm_Greys_r
   texture.initTFF1DTex("../tff.dat", &trTex);
@@ -300,7 +300,7 @@ void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
 void rcSetUinforms()
 {
   shader.setUniform("uSteps", g_stepSize);
-  shader.setUniform("uTransferFunction", GL_TEXTURE_1D, trTex, 0);
+  // shader.setUniform("uTransferFunction", GL_TEXTURE_1D, trTex, 0);
   shader.setUniform("uBackCoord", GL_TEXTURE_2D, g_bfTexObj, 1);
 
   // string sprites;
@@ -321,8 +321,14 @@ void rcSetUinforms()
   shader.setUniform("uSliceMaps", GL_TEXTURE_3D, pngTex, 2);
   shader.setUniform("uMinGrayVal", g_MinGrayVal);
   shader.setUniform("uMaxGrayVal", g_MaxGrayVal);
-  shader.setUniform("uOpacityVal", g_OpacityVal);
+  // shader.setUniform("uOpacityVal", g_OpacityVal);
   shader.setUniform("uSetViewMode", uSetViewMode);
+
+  // struct timespec now;
+  // clock_gettime(CLOCK_REALTIME, &now);
+  // float curtm = now.tv_nsec / 1000000.0;
+  // shader.setUniform("time", curtm);
+  // cout << curtm << endl;
 
   // shader.setUniform("uNumberOfSlices", g_NumberOfSlices);
   // shader.setUniform("uColorVal", g_ColorVal);
@@ -344,7 +350,9 @@ void initShader()
     g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
 // fragment shader object for second pass
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
-    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
+    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
+    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
+    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCleanData.frag", GL_FRAGMENT_SHADER);
 // create the shader program , use it in an appropriate time
     shader.createShaderPgm();
 }
@@ -379,6 +387,12 @@ void display()
     render(GL_BACK);
     glUseProgram(0);
     GL_ERROR();
+
+    string str = "MinGrayVal: " + to_string(g_MinGrayVal * 256.0);
+    char *cstr = new char[str.length() + 1];
+    strcpy(cstr, str.c_str());
+    min_gr_label->set_text(cstr);
+    delete [] cstr;
 
     glutSwapBuffers();
 }
@@ -519,7 +533,7 @@ int main(int argc, char** argv)
   glutKeyboardFunc(&keyboard);
   glutMotionFunc(&myGlutMotion);
   GLUI_Master.set_glutMouseFunc(&myGlutMouse);
-  GLUI_Master.set_glutIdleFunc(&rotateDisplay);
+  // GLUI_Master.set_glutIdleFunc(&rotateDisplay);
   // init();
 
   /****************************************/
@@ -549,7 +563,7 @@ int main(int argc, char** argv)
 
   separator = new GLUI_Separator(obj_panel);
 
-  GLUI_StaticText *min_gr_label = new GLUI_StaticText(obj_panel, "MinGrayVal:");
+  min_gr_label = new GLUI_StaticText(obj_panel, "MinGrayVal:");
   sb = new GLUI_Scrollbar(obj_panel, "MinGrayVal", GLUI_SCROLL_HORIZONTAL, &g_MinGrayVal);
   sb->set_float_limits(0, 1);
 
