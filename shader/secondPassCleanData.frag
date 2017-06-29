@@ -374,72 +374,24 @@ void main(void)
                   vec3 deltaDir;
                   float neighbours_gray_val;
 
-                  // vec3 dirFromCP[26];
-                  // dirFromCP[0] = vec3(1, 0, 0);
-                  // dirFromCP[1] = vec3(0, 1, 0);
-                  // dirFromCP[2] = vec3(0, 0, 1);
-                  // dirFromCP[3] = vec3(-1, 0, 0);
-                  // dirFromCP[4] = vec3(0, -1, 0);
-                  // dirFromCP[5] = vec3(0, 0, -1);
-                  //
-                  // dirFromCP[6] = vec3(-1, 1, 1);
-                  // dirFromCP[7] = vec3(1, 1, 1);
-                  // dirFromCP[8] = vec3(1, 1, -1);
-                  // dirFromCP[9] = vec3(-1, 1, -1);
-                  // dirFromCP[10] = vec3(-1, -1, 1);
-                  // dirFromCP[11] = vec3(1, -1, 1);
-                  // dirFromCP[12] = vec3(1, -1, -1);
-                  // dirFromCP[13] = vec3(-1, -1, -1);
-                  //
-                  // dirFromCP[14] = vec3(-1, 0, 1);
-                  // dirFromCP[15] = vec3(0, 1, 1);
-                  // dirFromCP[16] = vec3(1, 0, 1);
-                  // dirFromCP[17] = vec3(0, -1, 1);
-                  // dirFromCP[18] = vec3(-1, 1, 0);
-                  // dirFromCP[19] = vec3(1, 1, 0);
-                  // dirFromCP[20] = vec3(1, -1, 0);
-                  // dirFromCP[21] = vec3(-1, -1, 0);
-                  // dirFromCP[22] = vec3(-1, 0, -1);
-                  // dirFromCP[23] = vec3(0, 1, -1);
-                  // dirFromCP[24] = vec3(1, 0, -1);
-                  // dirFromCP[25] = vec3(0, -1, -1);
-                  //
-                  // for(int j = 0; j < 26; j++) {
-                  //   deltaDir = normalize(dirFromCP[j]) / 256.0;
-                  //   vec3 curDotPos = dotPos;
-                  //   for(int pixel_i = 0; pixel_i < 1; pixel_i++) {
-                  //     curDotPos += deltaDir;
-                  //     neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
-                  //     if(neighbours_gray_val > 107.0 / 256.0) {
-                  //       intensiveDotNumbers++;
-                  //     }
-                  //   }
-                  // }
-
                   int mask_rad = 5;
                   vec3 offset;
                   vec3 curDotPos;
                   for(int i = 0; i < mask_rad; ++i) {
                     for(int j = 0; j < mask_rad; ++j) {
                       for(int k = 0; k < mask_rad; ++k) {
+
                         offset = vec3((i - (int)mask_rad / 2) / xw,
                             (j - (int)mask_rad / 2) / yw,
                             (k - (int)mask_rad / 2) / zw);
+
                         curDotPos = dotPos + offset;
                         neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
+
                         if(neighbours_gray_val > 107.0 / 256.0) {
                           intensiveDotNumbers++;
                         }
 
-                        // deltaDir = normalize(vec3(i - (int)mask_rad / 2, j - (int)mask_rad / 2, k - (int)mask_rad / 2)) / 256.0;
-                        // curDotPos = dotPos;
-                        // for(int pixel_i = 0; pixel_i < 1; pixel_i++) {
-                        //   curDotPos += deltaDir;
-                        //   neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
-                        //   if(neighbours_gray_val > 107.0 / 256.0) {
-                        //     intensiveDotNumbers++;
-                        //   }
-                        // }
                       }
                     }
                   }
