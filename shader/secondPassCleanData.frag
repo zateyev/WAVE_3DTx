@@ -12,17 +12,17 @@ uniform float uSteps;
 uniform float l;
 uniform float s;
 
+float xw = 256.0;
+float yw = 256.0;
+float zw = 449.0;
+
+// float xw = 419.0;
+// float yw = 492.0;
+// float zw = 462.0;
+
 // Compute the Normal around the current voxel
 vec3 getNormal(vec3 at)
 {
-    // float xw = 419.0;
-    // float yw = 492.0;
-    // float zw = 462.0;
-
-    float xw = 256.0;
-    float yw = 256.0;
-    float zw = 449.0;
-
     vec3 texpos1;
 
     float w0 = (at.z - (1.0/zw)) - floor(at.z);
@@ -74,7 +74,7 @@ vec3 getNormal(vec3 at)
 
 
     texpos1.z = at.z + 1.0/zw;
-    
+
     texpos1.x = at.x - 1.0/xw;
     texpos1.y = at.y + 1.0/yw;
     H0 = texture(uSliceMaps, texpos1).x;
@@ -365,8 +365,8 @@ void main(void)
             float F0 = 5.0; // fresnel reflectance at normal incidence
             float k = 0.7; // fraction of diffuse reflection (specular reflection = 1 - k)
 
-            for(int i = 0; i < 3; ++i) {
-              vec3 L = normalize(lightPos[i] - currentPosition.xyz);
+            for(int light_i = 0; light_i < 3; ++light_i) {
+              vec3 L = normalize(lightPos[light_i] - currentPosition.xyz);
               if (uSetViewMode == 0) { // Blinn-Phong shading mode
 
                   int intensiveDotNumbers = 0;
@@ -374,89 +374,83 @@ void main(void)
                   vec3 deltaDir;
                   float neighbours_gray_val;
 
-                  vec3 dirFromCP[26];
-                  dirFromCP[0] = vec3(1, 0, 0);
-                  dirFromCP[1] = vec3(0, 1, 0);
-                  dirFromCP[2] = vec3(0, 0, 1);
-                  dirFromCP[3] = vec3(-1, 0, 0);
-                  dirFromCP[4] = vec3(0, -1, 0);
-                  dirFromCP[5] = vec3(0, 0, -1);
+                  // vec3 dirFromCP[26];
+                  // dirFromCP[0] = vec3(1, 0, 0);
+                  // dirFromCP[1] = vec3(0, 1, 0);
+                  // dirFromCP[2] = vec3(0, 0, 1);
+                  // dirFromCP[3] = vec3(-1, 0, 0);
+                  // dirFromCP[4] = vec3(0, -1, 0);
+                  // dirFromCP[5] = vec3(0, 0, -1);
+                  //
+                  // dirFromCP[6] = vec3(-1, 1, 1);
+                  // dirFromCP[7] = vec3(1, 1, 1);
+                  // dirFromCP[8] = vec3(1, 1, -1);
+                  // dirFromCP[9] = vec3(-1, 1, -1);
+                  // dirFromCP[10] = vec3(-1, -1, 1);
+                  // dirFromCP[11] = vec3(1, -1, 1);
+                  // dirFromCP[12] = vec3(1, -1, -1);
+                  // dirFromCP[13] = vec3(-1, -1, -1);
+                  //
+                  // dirFromCP[14] = vec3(-1, 0, 1);
+                  // dirFromCP[15] = vec3(0, 1, 1);
+                  // dirFromCP[16] = vec3(1, 0, 1);
+                  // dirFromCP[17] = vec3(0, -1, 1);
+                  // dirFromCP[18] = vec3(-1, 1, 0);
+                  // dirFromCP[19] = vec3(1, 1, 0);
+                  // dirFromCP[20] = vec3(1, -1, 0);
+                  // dirFromCP[21] = vec3(-1, -1, 0);
+                  // dirFromCP[22] = vec3(-1, 0, -1);
+                  // dirFromCP[23] = vec3(0, 1, -1);
+                  // dirFromCP[24] = vec3(1, 0, -1);
+                  // dirFromCP[25] = vec3(0, -1, -1);
+                  //
+                  // for(int j = 0; j < 26; j++) {
+                  //   deltaDir = normalize(dirFromCP[j]) / 256.0;
+                  //   vec3 curDotPos = dotPos;
+                  //   for(int pixel_i = 0; pixel_i < 1; pixel_i++) {
+                  //     curDotPos += deltaDir;
+                  //     neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
+                  //     if(neighbours_gray_val > 107.0 / 256.0) {
+                  //       intensiveDotNumbers++;
+                  //     }
+                  //   }
+                  // }
 
-                  dirFromCP[6] = vec3(-1, 1, 1);
-                  dirFromCP[7] = vec3(1, 1, 1);
-                  dirFromCP[8] = vec3(1, 1, -1);
-                  dirFromCP[9] = vec3(-1, 1, -1);
-                  dirFromCP[10] = vec3(-1, -1, 1);
-                  dirFromCP[11] = vec3(1, -1, 1);
-                  dirFromCP[12] = vec3(1, -1, -1);
-                  dirFromCP[13] = vec3(-1, -1, -1);
+                  int mask_rad = 5;
+                  vec3 offset;
+                  vec3 curDotPos;
+                  for(int i = 0; i < mask_rad; ++i) {
+                    for(int j = 0; j < mask_rad; ++j) {
+                      for(int k = 0; k < mask_rad; ++k) {
+                        offset = vec3((i - (int)mask_rad / 2) / xw,
+                            (j - (int)mask_rad / 2) / yw,
+                            (k - (int)mask_rad / 2) / zw);
+                        curDotPos = dotPos + offset;
+                        neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
+                        if(neighbours_gray_val > 107.0 / 256.0) {
+                          intensiveDotNumbers++;
+                        }
 
-                  dirFromCP[14] = vec3(-1, 0, 1);
-                  dirFromCP[15] = vec3(0, 1, 1);
-                  dirFromCP[16] = vec3(1, 0, 1);
-                  dirFromCP[17] = vec3(0, -1, 1);
-                  dirFromCP[18] = vec3(-1, 1, 0);
-                  dirFromCP[19] = vec3(1, 1, 0);
-                  dirFromCP[20] = vec3(1, -1, 0);
-                  dirFromCP[21] = vec3(-1, -1, 0);
-                  dirFromCP[22] = vec3(-1, 0, -1);
-                  dirFromCP[23] = vec3(0, 1, -1);
-                  dirFromCP[24] = vec3(1, 0, -1);
-                  dirFromCP[25] = vec3(0, -1, -1);
-
-                  float rndx;
-                  float rndy;
-                  float rndz;
-                  int rndr;
-
-                  for(int j = 0; j < 26; j++) {
-                    // rndx = random(gl_FragCoord.xy);
-                    // rndy = random(gl_FragCoord.xy);
-                    // rndz = random(gl_FragCoord.xy);
-                    // rndr = (int)random(gl_FragCoord.xy) % 3 + 1;
-
-                    // deltaDir = normalize(vec3(rndx, rndy, rndz)) * 2 / 256.0;
-                    deltaDir = normalize(dirFromCP[j]) / 256.0;
-
-                    // vec3 curDotPos = dotPos + deltaDir;
-
-                    // neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
-                    // if(neighbours_gray_val > 0.42) {
-                    //   intensiveDotNumbers++;
-                    // }
-
-                    vec3 curDotPos = dotPos;
-                    for(int pixel_i = 0; pixel_i < 1; pixel_i++) {
-                      curDotPos += deltaDir;
-                      neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
-                      if(neighbours_gray_val > 107.0 / 256.0) {
-                        intensiveDotNumbers++;
+                        // deltaDir = normalize(vec3(i - (int)mask_rad / 2, j - (int)mask_rad / 2, k - (int)mask_rad / 2)) / 256.0;
+                        // curDotPos = dotPos;
+                        // for(int pixel_i = 0; pixel_i < 1; pixel_i++) {
+                        //   curDotPos += deltaDir;
+                        //   neighbours_gray_val = texture(uSliceMaps, curDotPos).x;
+                        //   if(neighbours_gray_val > 107.0 / 256.0) {
+                        //     intensiveDotNumbers++;
+                        //   }
+                        // }
                       }
                     }
-
-                    // dotPos = currentPosition.xyz;
-                    // for(int step_i = 0; step_i < 5; step_i++) {
-                    //   dotPos += deltaDir;
-                    //   neighbours_gray_val = texture(uSliceMaps, dotPos).x;
-                    //   if(neighbours_gray_val > 0.4361) {
-                    //     intensiveDotNumbers++;
-                    //     // break;
-                    //   }
-                    // }
-
                   }
 
-                  if(intensiveDotNumbers > 5) {
+                  if(intensiveDotNumbers > 20) {
                     vec3 Iamb = ambientLighting();
                     vec3 Idif = diffuseLighting(N, L);
                     vec3 Ispe = specularLighting(N, L, V);
                     sample.rgb += (Iamb + Idif + Ispe);
                   }
 
-                  // vec3 Iamb = ambientLighting();
-                  // vec3 Idif = diffuseLighting(N, L);
-                  // vec3 Ispe = specularLighting(N, L, V);
-                  // sample.rgb += (Iamb + Idif + Ispe);
               }
               else if(uSetViewMode == 1) { // Cook-Torrance mode
                 // sample.rgb += cookTorranceSpecular(N, L, V, roughnessValue, F0, k);
