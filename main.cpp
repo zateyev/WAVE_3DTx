@@ -74,8 +74,8 @@ int uSetViewMode = 0;
 // float g_SlicesOverY = g_SlicesOverX;
 // string datasetDir = "../slicemaps/";
 
-float g_stepSize = 512.0;
-float g_MinGrayVal = 108.0 / 256.0; // 0
+float g_stepSize = 256.0;
+float g_MinGrayVal = 103.0 / 256.0; // 0
 float g_MaxGrayVal = 1.0; // 1
 float g_OpacityVal = 1.0; // 40
 float g_ColorVal = 1.0; // 0.4
@@ -352,7 +352,9 @@ void initShader()
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
-    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCleanData.frag", GL_FRAGMENT_SHADER);
+    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCleanData.frag", GL_FRAGMENT_SHADER);
+    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMeanFiltering.frag", GL_FRAGMENT_SHADER);
+    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMedianFiltering.frag", GL_FRAGMENT_SHADER);
 // create the shader program , use it in an appropriate time
     shader.createShaderPgm();
 }
