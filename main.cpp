@@ -74,7 +74,7 @@ int uSetViewMode = 0;
 // float g_SlicesOverY = g_SlicesOverX;
 // string datasetDir = "../slicemaps/";
 
-float g_stepSize = 256.0;
+float g_stepSize = 1024.0;
 float g_MinGrayVal = 103.0 / 256.0; // 0
 float g_MaxGrayVal = 1.0; // 1
 float g_OpacityVal = 1.0; // 40
@@ -177,7 +177,8 @@ void init()
   Texture texture;
   // texture.initVol3DTex("../final.screw_joint.raw", &pngTex, 419, 492, 462);
   // texture.initVol3DTex("../breast2.raw", &pngTex, 256, 256, 256);
-  texture.initVol3DTex("../wasp.raw", &pngTex, 256, 256, 449);
+  // texture.initVol3DTex("../wasp.raw", &pngTex, 256, 256, 449);
+  texture.initVol3DTex("../wasp_3.raw", &pngTex, 449, 449, 449);
   // texture.initVol3DTex("../256.raw", &pngTex, 256, 256, 252);
 
   // texture.loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height, 1); // cm_Greys_r
@@ -349,6 +350,7 @@ void initShader()
 // vertex shader object for second pass
     g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
 // fragment shader object for second pass
+// g_rcFragHandle = Shader::initShaderObj("../shader/raycasting.frag", GL_FRAGMENT_SHADER);
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
     // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
@@ -586,7 +588,7 @@ int main(int argc, char** argv)
   // GLUI_StaticText *step_size_label = new GLUI_StaticText(obj_panel, "StepSize:");
   // GLUI_Spinner *spinner = new GLUI_Spinner(obj_panel, "StepSize:", &g_stepSize);
   spinner = new GLUI_Spinner(obj_panel, "StepSize:", &g_stepSize);
-  spinner->set_float_limits(0, 1024.0);
+  spinner->set_float_limits(0, 2024.0);
   spinner->set_alignment(GLUI_ALIGN_RIGHT);
   sb = new GLUI_Scrollbar(obj_panel, "StepSize", GLUI_SCROLL_HORIZONTAL, &g_stepSize);
   sb->set_float_limits(0, 1024.0);

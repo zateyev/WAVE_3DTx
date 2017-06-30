@@ -12,9 +12,13 @@ uniform float uSteps;
 uniform float l;
 uniform float s;
 
-float xw = 256.0;
-float yw = 256.0;
+float xw = 449.0;
+float yw = 449.0;
 float zw = 449.0;
+
+// float xw = 256.0;
+// float yw = 256.0;
+// float zw = 256.0;
 
 // float xw = 419.0;
 // float yw = 492.0;
@@ -352,9 +356,10 @@ void main(void)
 
         float sum_gray_val = 0.0;
 
-        int mask_size = 5;
+        int mask_size = 3;
         vec3 offset;
         vec3 curDotPos;
+
         for(int i = 0; i < mask_size; ++i) {
           for(int j = 0; j < mask_size; ++j) {
             for(int k = 0; k < mask_size; ++k) {
@@ -367,9 +372,32 @@ void main(void)
             }
           }
         }
-
+        
         gray_val = sum_gray_val / pow(mask_size, 3);
 
+
+        // vec3 dirFromCP[14];
+        // dirFromCP[0] = vec3(1.0 / xw, 0.0 / yw, 0.0 / zw);
+        // dirFromCP[1] = vec3(0.0 / xw, 1.0 / yw, 0.0 / zw);
+        // dirFromCP[2] = vec3(0.0 / xw, 0.0 / yw, 1.0 / zw);
+        // dirFromCP[3] = vec3(-1.0 / xw, 0.0 / yw, 0.0 / zw);
+        // dirFromCP[4] = vec3(0.0 / xw, -1.0 / yw, 0.0 / zw);
+        // dirFromCP[5] = vec3(0.0 / xw, 0.0 / yw, -1.0 / zw);
+        //
+        // dirFromCP[6] = vec3(-1.0 / xw, 1.0 / yw, 1.0 / zw);
+        // dirFromCP[7] = vec3(1.0 / xw, 1.0 / yw, 1.0 / zw);
+        // dirFromCP[8] = vec3(1.0 / xw, 1.0 / yw, -1.0 / zw);
+        // dirFromCP[9] = vec3(-1.0 / xw, 1.0 / yw, -1.0 / zw);
+        // dirFromCP[10] = vec3(-1.0 / xw, -1.0 / yw, 1.0 / zw);
+        // dirFromCP[11] = vec3(1.0 / xw, -1.0 / yw, 1.0 / zw);
+        // dirFromCP[12] = vec3(1.0 / xw, -1.0 / yw, -1.0 / zw);
+        // dirFromCP[13] = vec3(-1.0 / xw, -1.0 / yw, -1.0 / zw);
+        // for(int i = 0; i < 14; ++i) {
+        //   offset = dirFromCP[i];
+        //   curDotPos = currentPosition.xyz + offset;
+        //   sum_gray_val += texture(uSliceMaps, curDotPos).x;
+        // }
+        // gray_val = sum_gray_val / 14;
       }
       if(gray_val > uMinGrayVal && gray_val < uMaxGrayVal) {
         // normalize vectors after interpolation
