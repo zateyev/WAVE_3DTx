@@ -12,13 +12,9 @@ uniform float uSteps;
 uniform float l;
 uniform float s;
 
-float xw = 449.0;
-float yw = 449.0;
-float zw = 449.0;
-
-// float xw = 256.0;
-// float yw = 256.0;
-// float zw = 449.0;
+float xw = 256.0;
+float yw = 256.0;
+float zw = 252.0;
 
 // float xw = 419.0;
 // float yw = 492.0;
@@ -331,8 +327,22 @@ vec3 cookTorranceSpecular(
   return lightColor * LdotN * (k + power * (1.0 - k));
 }
 
-float random(vec2 co){
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+void bubbleSort(float arr[]){
+  bool swapped = true;
+  int n = 27;
+  float tmp;
+  while (swapped) {
+    swapped = false;
+    for (int i = 0; i < n - 1; ++i) {
+      if (arr[i] > arr[i + 1]) {
+        tmp = arr[i];
+        arr[i] = arr[i + 1];
+        arr[i + 1] = tmp;
+        swapped = true;
+        }
+    }
+    n--;
+  }
 }
 
 void main(void)
@@ -350,121 +360,93 @@ void main(void)
     // lightPos[2] = vec3(-1, -1, 1);
     lightPos[2] = vec3(1, 1, -1);
 
-    // lightPos[3] = vec3(-1, 1, 1);
-    // lightPos[4] = vec3(-1, 1, -1);
-    // lightPos[5] = vec3(-1, -1, 1);
-    // lightPos[6] = vec3(1, -1, -1);
-    // lightPos[7] = vec3(1, -1, 1);
+    float cylinderRadius = 0.4;
+    float xsqu;
+    float ysqu;
+    float distanceFromCenter;
 
     for(int i = 0; i < uSteps; i++) {
-      float gray_val = texture(uSliceMaps, currentPosition.xyz);
-      if (uSetViewMode == 0 && gray_val > uMinGrayVal && gray_val < uMaxGrayVal) {
 
-        float sum_gray_val = 0.0;
+      xsqu = (0.5 - currentPosition.x) * (0.5 - currentPosition.x);
+      ysqu = (0.5 - currentPosition.y) * (0.5 - currentPosition.y);
+      distanceFromCenter = sqrt(xsqu + ysqu);
 
-        int mask_size = 3;
-        vec3 offset;
-        vec3 curDotPos;
+      if (distanceFromCenter < cylinderRadius && currentPosition.z > 0.1 && currentPosition.z < 0.9) {
+        /* code */
+        float gray_val = texture(uSliceMaps, currentPosition.xyz);
 
-        for(int i = 0; i < mask_size; ++i) {
-          for(int j = 0; j < mask_size; ++j) {
-            for(int k = 0; k < mask_size; ++k) {
-              offset = vec3((i - (int)mask_size / 2) / xw,
-                  (j - (int)mask_size / 2) / yw,
-                  (k - (int)mask_size / 2) / zw);
+        if (uSetViewMode == 0 && gray_val > uMinGrayVal && gray_val < uMaxGrayVal) {
+          int mask_size = 5;
+          // const int voxels_number = pow(mask_size, 3);
+          float gray_values[27];
+          int neighbour_i = 0;
+          vec3 offset;
+          vec3 curDotPos;
+          for(int i = 0; i < mask_size; ++i) {
+            for(int j = 0; j < mask_size; ++j) {
+              for(int k = 0; k < mask_size; ++k) {
+                offset = vec3((i - (int)mask_size / 2) / xw,
+                (j - (int)mask_size / 2) / yw,
+                (k - (int)mask_size / 2) / zw);
 
-              curDotPos = currentPosition.xyz + offset;
-              sum_gray_val += texture(uSliceMaps, curDotPos).x;
+                curDotPos = currentPosition.xyz + offset;
+                gray_values[neighbour_i] = texture(uSliceMaps, curDotPos).x;
+                neighbour_i++;
+              }
             }
           }
-        }
 
-        gray_val = sum_gray_val / pow(mask_size, 3);
-
-
-        // vec3 dirFromCP[14];
-        // dirFromCP[0] = vec3(1.0 / xw, 0.0 / yw, 0.0 / zw);
-        // dirFromCP[1] = vec3(0.0 / xw, 1.0 / yw, 0.0 / zw);
-        // dirFromCP[2] = vec3(0.0 / xw, 0.0 / yw, 1.0 / zw);
-        // dirFromCP[3] = vec3(-1.0 / xw, 0.0 / yw, 0.0 / zw);
-        // dirFromCP[4] = vec3(0.0 / xw, -1.0 / yw, 0.0 / zw);
-        // dirFromCP[5] = vec3(0.0 / xw, 0.0 / yw, -1.0 / zw);
-        //
-        // dirFromCP[6] = vec3(-1.0 / xw, 1.0 / yw, 1.0 / zw);
-        // dirFromCP[7] = vec3(1.0 / xw, 1.0 / yw, 1.0 / zw);
-        // dirFromCP[8] = vec3(1.0 / xw, 1.0 / yw, -1.0 / zw);
-        // dirFromCP[9] = vec3(-1.0 / xw, 1.0 / yw, -1.0 / zw);
-        // dirFromCP[10] = vec3(-1.0 / xw, -1.0 / yw, 1.0 / zw);
-        // dirFromCP[11] = vec3(1.0 / xw, -1.0 / yw, 1.0 / zw);
-        // dirFromCP[12] = vec3(1.0 / xw, -1.0 / yw, -1.0 / zw);
-        // dirFromCP[13] = vec3(-1.0 / xw, -1.0 / yw, -1.0 / zw);
-        // for(int i = 0; i < 14; ++i) {
-        //   offset = dirFromCP[i];
-        //   curDotPos = currentPosition.xyz + offset;
-        //   sum_gray_val += texture(uSliceMaps, curDotPos).x;
-        // }
-        // gray_val = sum_gray_val / 14;
-      }
-      if(gray_val > uMinGrayVal && gray_val < uMaxGrayVal) {
-        // normalize vectors after interpolation
-        vec3 V = normalize(pos - currentPosition.xyz);
-        vec3 N = normalize(getNormal(currentPosition.xyz));
-
-        // set important material values for cookTorranceSpecular
-        float roughnessValue = 0.6; // 0 : smooth, 1: rough
-        float F0 = 5.0; // fresnel reflectance at normal incidence
-        float k = 0.7; // fraction of diffuse reflection (specular reflection = 1 - k)
-
-        // vec3 nearest_light = lightPos[0];
-        // float dist = distance(pos, lightPos[0]);
-        // for(int light_i = 1; light_i < 8; ++light_i) {
-        //   if (distance(pos, lightPos[light_i]) < dist) {
-        //     dist = distance(pos, lightPos[light_i]);
-        //     nearest_light = lightPos[light_i];
-        //   }
-        // }
-        //
-        // vec3 L = normalize(nearest_light - currentPosition.xyz);
-        // if (uSetViewMode == 0) { // Blinn-Phong shading mode
-        //
-        //   vec3 Iamb = ambientLighting();
-        //   vec3 Idif = diffuseLighting(N, L);
-        //   vec3 Ispe = specularLighting(N, L, V);
-        //   sample.rgb += (Iamb + Idif + Ispe);
-        //
-        // }
-        // else if(uSetViewMode == 1) { // Cook-Torrance mode
-        //   // sample.rgb += cookTorranceSpecular(N, L, V, roughnessValue, F0, k);
-        //
-        //   vec3 Iamb = ambientLighting();
-        //   vec3 Idif = diffuseLighting(N, L);
-        //   vec3 Ispe = specularLighting(N, L, V);
-        //   sample.rgb += (Iamb + Idif + Ispe);
-        // }
-
-        for(int light_i = 0; light_i < 3; ++light_i) {
-          vec3 L = normalize(lightPos[light_i] - currentPosition.xyz);
-          if (uSetViewMode == 0) { // Blinn-Phong shading mode
-
-            vec3 Iamb = ambientLighting();
-            vec3 Idif = diffuseLighting(N, L);
-            vec3 Ispe = specularLighting(N, L, V);
-            sample.rgb += (Iamb + Idif + Ispe);
-
+          // bubbleSort(gray_values);
+          bool swapped = true;
+          int n = 27;
+          float tmp;
+          while (swapped) {
+            swapped = false;
+            for (int i = 0; i < n - 1; ++i) {
+              if (gray_values[i] > gray_values[i + 1]) {
+                tmp = gray_values[i];
+                gray_values[i] = gray_values[i + 1];
+                gray_values[i + 1] = tmp;
+                swapped = true;
+              }
+            }
+            n--;
           }
-          else if(uSetViewMode == 1) { // Cook-Torrance mode
-            // sample.rgb += cookTorranceSpecular(N, L, V, roughnessValue, F0, k);
 
-            vec3 Iamb = ambientLighting();
-            vec3 Idif = diffuseLighting(N, L);
-            vec3 Ispe = specularLighting(N, L, V);
-            sample.rgb += (Iamb + Idif + Ispe);
-          }
+          gray_val = gray_values[13];
+
         }
+        if(gray_val > uMinGrayVal && gray_val < uMaxGrayVal) {
+          // normalize vectors after interpolation
+          vec3 V = normalize(pos - currentPosition.xyz);
+          vec3 N = normalize(getNormal(currentPosition.xyz));
 
-        accum += sample;
-        if(accum.a >= 1.0)
-        break;
+          // set important material values for cookTorranceSpecular
+          float roughnessValue = 0.6; // 0 : smooth, 1: rough
+          float F0 = 5.0; // fresnel reflectance at normal incidence
+          float k = 0.7; // fraction of diffuse reflection (specular reflection = 1 - k)
+
+          for(int light_i = 0; light_i < 3; ++light_i) {
+            vec3 L = normalize(lightPos[light_i] - currentPosition.xyz);
+            if (uSetViewMode == 0) { // Blinn-Phong shading mode
+              vec3 Iamb = ambientLighting();
+              vec3 Idif = diffuseLighting(N, L);
+              vec3 Ispe = specularLighting(N, L, V);
+              sample.rgb += (Iamb + Idif + Ispe);
+
+            }
+            else if(uSetViewMode == 1) { // Cook-Torrance mode
+              vec3 Iamb = ambientLighting();
+              vec3 Idif = diffuseLighting(N, L);
+              vec3 Ispe = specularLighting(N, L, V);
+              sample.rgb += (Iamb + Idif + Ispe);
+            }
+          }
+
+          accum += sample;
+          if(accum.a >= 1.0)
+          break;
+        }
       }
 
 

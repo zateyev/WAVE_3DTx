@@ -79,7 +79,9 @@ set(ALL_LIBS
 )
 
 add_executable(main
-  main.cpp
+  nemain.cpp
+  common/Dwave.cpp
+	common/Dwave.hpp
   common/shader.cpp
 	common/shader.hpp
 	common/texture.cpp

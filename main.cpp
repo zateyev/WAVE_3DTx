@@ -17,6 +17,8 @@
 #include <iomanip> // setprecision
 #include <sstream>
 
+#include <png.h>
+
 
 #define GL_ERROR() checkForOpenGLError(__FILE__, __LINE__)
 using namespace std;
@@ -50,63 +52,109 @@ float g_SlicesOverY = g_SlicesOverX;
 string datasetDir = "../sprites/";
 int uSetViewMode = 0;
 
-// float g_NumberOfSlices = 1024.0;
-// int png_width = 16384;
-// int png_height = png_width;
-// int maxTexturesNumber = 4;
-// float g_SlicesOverX = 16.0;
-// float g_SlicesOverY = g_SlicesOverX;
-// string datasetDir = "../sprites_1024/";
-
-// float g_NumberOfSlices = 2016.0;
-// int png_width = 18144;
-// int png_height = png_width;
-// int maxTexturesNumber = 2;
-// float g_SlicesOverX = 9.0;
-// float g_SlicesOverY = g_SlicesOverX;
-// string datasetDir = "../sprites_2016/";
-
-// float g_NumberOfSlices = 384.0; // 1920
-// int png_width = 16128;
-// int png_height = png_width;
-// int maxTexturesNumber = 6; // > 7
-// float g_SlicesOverX = 8.0;
-// float g_SlicesOverY = g_SlicesOverX;
-// string datasetDir = "../slicemaps/";
-
 float g_stepSize = 1024.0;
-float g_MinGrayVal = 103.0 / 256.0; // 0
-float g_MaxGrayVal = 1.0; // 1
-float g_OpacityVal = 1.0; // 40
-float g_ColorVal = 1.0; // 0.4
-float g_AbsorptionModeIndex = 1.0; // -1.0 ? 1
+float g_MinGrayVal = 159.6; // 106.42;
+float g_MaxGrayVal = 1.0;
+float g_OpacityVal = 1.0;
+float g_ColorVal = 1.0;
+float g_AbsorptionModeIndex = 1.0;
+float cyl_rad = 0.45;
 
-// bool loadPngImage(const char *name, int &outWidth, int &outHeight, GLubyte **outData);
 
 int tr_width = 256;
 int tr_height = 10;
 
-int   last_x, last_y;
-float rotationX = 0.0, rotationY = 0.0;
+int last_x, last_y;
+float rotationX = 0.0;
+float rotationY = 0.0;
 float initialFoV = 45.0f;
 float FoV = 45.0f;
 
-int xx = 0; int yy = 0;
-int ww = 0; int hh = 0;
+int xx = 0;
+int yy = 0;
+int ww = 0;
+int hh = 0;
+
+float angleX = 0;
+float angleY = 0;
 
 int main_window;
 
 /** Pointers to the windows and some of the controls we'll create **/
 GLUI *glui, *glui2;
-GLUI_Spinner    *light0_spinner, *light1_spinner;
+GLUI_Spinner *light0_spinner, *light1_spinner;
 GLUI_RadioGroup *radio;
-GLUI_Panel      *obj_panel;
+GLUI_Panel *obj_panel;
 GLUI_StaticText *fps_val;
 GLUI_StaticText *min_gr_label;
 GLUI_Spinner *spinner;
 
-int checkForOpenGLError(const char* file, int line)
-{
+void keyboard(unsigned char key, int x, int y);
+void display(void);
+void initVBO();
+void initShader();
+void initFrameBuffer(GLuint, GLuint, GLuint);
+GLuint initFace2DTex(GLuint texWidth, GLuint texHeight);
+void render(GLenum cullFace);
+void reshape(int w, int h);
+
+enum Constants { SCREENSHOT_MAX_FILENAME = 5 };
+static GLubyte *pixels = NULL;
+static GLuint fbo;
+static GLuint rbo_color;
+static GLuint rbo_depth;
+static const unsigned int HEIGHT = 800;
+static const unsigned int WIDTH = 800;
+static int offscreen = 1;
+static unsigned int max_nframes = 100;
+static unsigned int nframes = 0;
+static unsigned int time0;
+
+/* Model. */
+static double angle;
+static double delta_angle;
+
+static png_byte *png_bytes = NULL;
+static png_byte **png_rows = NULL;
+static void screenshot_png(const char *filename, unsigned int width, unsigned int height,
+  GLubyte **pixels, png_byte **png_bytes, png_byte ***png_rows) {
+    size_t i, nvals;
+    const size_t format_nchannels = 4;
+    FILE *f = fopen(filename, "wb");
+    nvals = format_nchannels * width * height;
+    *pixels = (GLubyte*)realloc(*pixels, nvals * sizeof(GLubyte));
+    *png_bytes = (png_byte*)realloc(*png_bytes, nvals * sizeof(png_byte));
+    *png_rows = (png_byte**)realloc(*png_rows, height * sizeof(png_byte*));
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, *pixels);
+    for (i = 0; i < nvals; i++)
+    (*png_bytes)[i] = (*pixels)[i];
+    for (i = 0; i < height; i++)
+    (*png_rows)[height - i - 1] = &(*png_bytes)[i * width * format_nchannels];
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) abort();
+    png_infop info = png_create_info_struct(png);
+    if (!info) abort();
+    if (setjmp(png_jmpbuf(png))) abort();
+    png_init_io(png, f);
+    png_set_IHDR(
+      png,
+      info,
+      width,
+      height,
+      8,
+      PNG_COLOR_TYPE_RGBA,
+      PNG_INTERLACE_NONE,
+      PNG_COMPRESSION_TYPE_DEFAULT,
+      PNG_FILTER_TYPE_DEFAULT
+    );
+    png_write_info(png, info);
+    png_write_image(png, *png_rows);
+    png_write_end(png, NULL);
+    fclose(f);
+  }
+
+
+int checkForOpenGLError(const char* file, int line) {
     // return 1 if an OpenGL error occured, 0 otherwise.
     GLenum glErr;
     int retCode = 0;
@@ -121,26 +169,18 @@ int checkForOpenGLError(const char* file, int line)
     }
     return retCode;
 }
-void keyboard(unsigned char key, int x, int y);
-void display(void);
-void initVBO();
-void initShader();
-void initFrameBuffer(GLuint, GLuint, GLuint);
-GLuint initFace2DTex(GLuint texWidth, GLuint texHeight);
 
-double GetTickCount(void)
-{
+double getTickCount(void) {
   struct timespec now;
   if (clock_gettime(CLOCK_MONOTONIC, &now))
     return 0;
   return now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0;
 }
 
-void CalculateFrameRate()
-{
+void calculateFrameRate() {
   static float framesPerSecond    = 0.0f;       // This will store our fps
   static float lastTime   = 0.0f;       // This will hold the time from the last frame
-  float currentTime = GetTickCount() * 0.001f;
+  float currentTime = getTickCount() * 0.001f;
   //printf("%.1f FPS\n", currentTime);
   ++framesPerSecond;
   if( currentTime - lastTime >= 1.0f )
@@ -162,10 +202,7 @@ void CalculateFrameRate()
   }
 }
 
-void render(GLenum cullFace);
-
-void init()
-{
+void init() {
   g_texWidth = g_winWidth;
   g_texHeight = g_winHeight;
   initVBO();
@@ -180,6 +217,9 @@ void init()
   // texture.initVol3DTex("../wasp.raw", &pngTex, 256, 256, 449);
   texture.initVol3DTex("../wasp_3.raw", &pngTex, 449, 449, 449);
   // texture.initVol3DTex("../256.raw", &pngTex, 256, 256, 252);
+  // texture.initVol3DTex("../archie.raw", &pngTex, 1536, 1536, 1152);
+  // texture.initVol3DTex("../eucrib.raw", &pngTex, 1536, 1536, 1152);
+  // texture.initVol3DTex("../gamma.raw", &pngTex, 1008, 1008, 1008);
 
   // texture.loadImage2("../cm_BrBG_r.png", &trTex, &tr_width, &tr_height, 1); // cm_Greys_r
   texture.initTFF1DTex("../tff.dat", &trTex);
@@ -193,9 +233,8 @@ void init()
   GL_ERROR();
   glutPostRedisplay();
 }
-// init the vertex buffer object
-void initVBO()
-{
+
+void initVBO() {
     GLfloat vertices[24] = {
     	0.0, 0.0, 0.0,
     	0.0, 0.0, 1.0,
@@ -248,8 +287,7 @@ void initVBO()
     g_vao = vao;
 }
 
-void drawBox(GLenum glFaces)
-{
+void drawBox(GLenum glFaces) {
     glEnable(GL_CULL_FACE);
     glCullFace(glFaces);
     glBindVertexArray(g_vao);
@@ -257,8 +295,7 @@ void drawBox(GLenum glFaces)
     glDisable(GL_CULL_FACE);
 }
 
-GLuint initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
-{
+GLuint initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight) {
     GLuint backFace2DTex;
     glGenTextures(1, &backFace2DTex);
     glBindTexture(GL_TEXTURE_2D, backFace2DTex);
@@ -270,8 +307,7 @@ GLuint initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
     return backFace2DTex;
 }
 
-void checkFramebufferStatus()
-{
+void checkFramebufferStatus() {
     GLenum complete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (complete != GL_FRAMEBUFFER_COMPLETE)
     {
@@ -280,9 +316,7 @@ void checkFramebufferStatus()
     }
 }
 
-// init the framebuffer, the only framebuffer used in this program
-void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
-{
+void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight) {
     // create a depth buffer for our framebuffer
     GLuint depthBuffer;
     glGenRenderbuffers(1, &depthBuffer);
@@ -298,9 +332,9 @@ void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
     glEnable(GL_DEPTH_TEST);
 }
 
-void rcSetUinforms()
-{
+void rcSetUinforms() {
   shader.setUniform("uSteps", g_stepSize);
+  // shader.setUniform("uCylRad", cyl_rad);
   // shader.setUniform("uTransferFunction", GL_TEXTURE_1D, trTex, 0);
   shader.setUniform("uBackCoord", GL_TEXTURE_2D, g_bfTexObj, 1);
 
@@ -320,7 +354,7 @@ void rcSetUinforms()
   // }
 
   shader.setUniform("uSliceMaps", GL_TEXTURE_3D, pngTex, 2);
-  shader.setUniform("uMinGrayVal", g_MinGrayVal);
+  shader.setUniform("uMinGrayVal", (float)(g_MinGrayVal / 256.0));
   shader.setUniform("uMaxGrayVal", g_MaxGrayVal);
   // shader.setUniform("uOpacityVal", g_OpacityVal);
   shader.setUniform("uSetViewMode", uSetViewMode);
@@ -340,31 +374,32 @@ void rcSetUinforms()
   GL_ERROR();
 }
 
-// init the shader object and shader program
-void initShader()
-{
-// vertex shader object for first pass
-    g_bfVertHandle = Shader::initShaderObj("../shader/firstPass.vert", GL_VERTEX_SHADER);
-// fragment shader object for first pass
-    g_bfFragHandle = Shader::initShaderObj("../shader/firstPass.frag", GL_FRAGMENT_SHADER);
-// vertex shader object for second pass
-    g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
-// fragment shader object for second pass
-// g_rcFragHandle = Shader::initShaderObj("../shader/raycasting.frag", GL_FRAGMENT_SHADER);
-    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
-    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
-    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
-    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCleanData.frag", GL_FRAGMENT_SHADER);
-    g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMeanFiltering.frag", GL_FRAGMENT_SHADER);
-    // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMedianFiltering.frag", GL_FRAGMENT_SHADER);
-// create the shader program , use it in an appropriate time
-    shader.createShaderPgm();
+void initShader() {
+  // vertex shader object for first pass
+  g_bfVertHandle = Shader::initShaderObj("../shader/firstPass.vert", GL_VERTEX_SHADER);
+  // fragment shader object for first pass
+  g_bfFragHandle = Shader::initShaderObj("../shader/firstPass.frag", GL_FRAGMENT_SHADER);
+  // vertex shader object for second pass
+  g_rcVertHandle = Shader::initShaderObj("../shader/secondPass.vert", GL_VERTEX_SHADER);
+  // fragment shader object for second pass
+  // g_rcFragHandle = Shader::initShaderObj("../shader/raycasting.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassNearestNeighbourHSVFusion.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassHSVSurface.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassSoebel.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCleanData.frag", GL_FRAGMENT_SHADER);
+  g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMeanFiltering.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassMedianFiltering.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCropCylinder.frag", GL_FRAGMENT_SHADER);
+  // g_rcFragHandle = Shader::initShaderObj("../shader/secondPassCCMed.frag", GL_FRAGMENT_SHADER);
+  // create the shader program , use it in an appropriate time
+  shader.createShaderPgm();
 }
 
-void reshape(int w, int h);
+static int model_finished(void) {
+  return nframes >= max_nframes;
+}
 
-void display()
-{
+void display() {
     int tx, ty, tw, th;
     GLUI_Master.get_viewport_area( &tx, &ty, &tw, &th );
 
@@ -392,20 +427,26 @@ void display()
     glUseProgram(0);
     GL_ERROR();
 
-    string str = "MinGrayVal: " + to_string(g_MinGrayVal * 256.0);
+    string str = "MinGrayVal: " + to_string(g_MinGrayVal);
     char *cstr = new char[str.length() + 1];
     strcpy(cstr, str.c_str());
     min_gr_label->set_text(cstr);
     delete [] cstr;
 
     glutSwapBuffers();
+
+    // char filename[SCREENSHOT_MAX_FILENAME];
+    // snprintf(filename, SCREENSHOT_MAX_FILENAME, "tmp%d.png", nframes);
+    // screenshot_png(filename, WIDTH, HEIGHT, &pixels, &png_bytes, &png_rows);
+    // // exit(EXIT_SUCCESS);
+    //
+    // nframes++;
+    // if (model_finished) {
+    //   exit(EXIT_SUCCESS);
+    // }
 }
 
-float angleX=0;
-float angleY=0;
-
-void render(GLenum cullFace)
-{
+void render(GLenum cullFace) {
     GL_ERROR();
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -440,8 +481,7 @@ void render(GLenum cullFace)
     GL_ERROR();
 }
 
-void myGlutMouse(int button, int button_state, int x, int y )
-{
+void myGlutMouse(int button, int button_state, int x, int y ) {
   if ( button == GLUT_LEFT_BUTTON && button_state == GLUT_DOWN )
   {
     last_x = x;
@@ -460,8 +500,7 @@ void myGlutMouse(int button, int button_state, int x, int y )
   glutPostRedisplay();
 }
 
-void myGlutMotion(int x, int y )
-{
+void myGlutMotion(int x, int y ) {
   rotationX += (float) (y - last_y);
   rotationY += (float) (x - last_x);
 
@@ -474,15 +513,12 @@ void myGlutMotion(int x, int y )
   glutPostRedisplay();
 }
 
-
-void rotateDisplay()
-{
+void rotateDisplay() {
     g_angle = (g_angle + 1) % 360;
     glutPostRedisplay();
 }
 
-void updateCamera()
-{
+void updateCamera() {
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glOrtho(xx, xx + ww, yy, yy + hh, -1, 1);
@@ -490,34 +526,29 @@ void updateCamera()
   glTranslatef(0, -hh, 0);
 }
 
-void reshape(int w, int h)
-{
+void reshape(int w, int h) {
     ww = w;
     hh = h;
     glViewport(0, 0, w, h);
     updateCamera();
 }
 
-void keyboard(unsigned char key, int x, int y)
-{
-    switch (key)
-    {
+void keyboard(unsigned char key, int x, int y) {
+  switch (key)
+  {
     case '\x1B':
-	exit(EXIT_SUCCESS);
-	break;
-    }
+    	exit(EXIT_SUCCESS);
+    	break;
+  }
 }
 
-void timerCB(int millisec)
-{
-  CalculateFrameRate();
-
-glutTimerFunc(millisec, timerCB, millisec);
-glutPostRedisplay();
+void timerCB(int millisec) {
+  calculateFrameRate();
+  glutTimerFunc(millisec, timerCB, millisec);
+  glutPostRedisplay();
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
   glutInitWindowPosition( 50, 50 );
@@ -538,7 +569,6 @@ int main(int argc, char** argv)
   glutMotionFunc(&myGlutMotion);
   GLUI_Master.set_glutMouseFunc(&myGlutMouse);
   // GLUI_Master.set_glutIdleFunc(&rotateDisplay);
-  // init();
 
   /****************************************/
   /*         Here's the GLUI code         */
@@ -568,8 +598,11 @@ int main(int argc, char** argv)
   separator = new GLUI_Separator(obj_panel);
 
   min_gr_label = new GLUI_StaticText(obj_panel, "MinGrayVal:");
-  sb = new GLUI_Scrollbar(obj_panel, "MinGrayVal", GLUI_SCROLL_HORIZONTAL, &g_MinGrayVal);
-  sb->set_float_limits(0, 1);
+  // sb = new GLUI_Scrollbar(obj_panel, "MinGrayVal", GLUI_SCROLL_HORIZONTAL, &g_MinGrayVal);
+  // sb->set_float_limits(0, 1);
+  spinner = new GLUI_Spinner(obj_panel, "MinGrayVal:", &g_MinGrayVal);
+  spinner->set_float_limits(0, 256.0);
+  spinner->set_alignment(GLUI_ALIGN_RIGHT);
 
   separator = new GLUI_Separator(obj_panel);
 
@@ -591,7 +624,12 @@ int main(int argc, char** argv)
   spinner->set_float_limits(0, 2024.0);
   spinner->set_alignment(GLUI_ALIGN_RIGHT);
   sb = new GLUI_Scrollbar(obj_panel, "StepSize", GLUI_SCROLL_HORIZONTAL, &g_stepSize);
-  sb->set_float_limits(0, 1024.0);
+  sb->set_float_limits(0, 2024.0);
+
+  separator = new GLUI_Separator(obj_panel);
+  spinner = new GLUI_Spinner(obj_panel, "Cylinder rad:", &cyl_rad);
+  spinner->set_float_limits(0, 0.7);
+  spinner->set_alignment(GLUI_ALIGN_RIGHT);
 
   /**** Add listbox ****/
   new GLUI_StaticText( glui, "" );
